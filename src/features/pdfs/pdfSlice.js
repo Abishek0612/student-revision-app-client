@@ -1,0 +1,89 @@
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
+
+const API_URL = "http://localhost:5001/api/pdfs/";
+
+const initialState = {
+  pdfs: [],
+  isLoading: false,
+  isError: false,
+  message: "",
+};
+
+export const uploadPdf = createAsyncThunk(
+  "pdfs/upload",
+  async (pdfData, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.user.token;
+      const config = {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      };
+      const response = await axios.post(API_URL, pdfData, config);
+      return response.data;
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+export const getPdfs = createAsyncThunk("pdfs/getAll", async (_, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.user.token;
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const response = await axios.get(API_URL, config);
+    return response.data;
+  } catch (error) {
+    const message =
+      (error.response && error.response.data && error.response.data.message) ||
+      error.message ||
+      error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
+export const pdfSlice = createSlice({
+  name: "pdf",
+  initialState,
+  reducers: {
+    reset: (state) => initialState,
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(uploadPdf.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(uploadPdf.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.pdfs.push(action.payload);
+      })
+      .addCase(uploadPdf.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      .addCase(getPdfs.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getPdfs.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.pdfs = action.payload;
+      })
+      .addCase(getPdfs.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      });
+  },
+});
+
+export const { reset } = pdfSlice.actions;
+export default pdfSlice.reducer;

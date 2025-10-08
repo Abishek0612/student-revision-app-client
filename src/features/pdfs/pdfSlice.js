@@ -50,6 +50,46 @@ export const getPdfs = createAsyncThunk("pdfs/getAll", async (_, thunkAPI) => {
   }
 });
 
+export const deletePdf = createAsyncThunk(
+  "pdfs/delete",
+  async (pdfId, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.user.token;
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      await axios.delete(API_URL + pdfId, config);
+      return pdfId;
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+export const seedNCERT = createAsyncThunk(
+  "pdfs/seedNCERT",
+  async (_, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.user.token;
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.post(API_URL + "seed-ncert", {}, config);
+      return response.data.pdfs;
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 export const pdfSlice = createSlice({
   name: "pdf",
   initialState,
@@ -63,7 +103,7 @@ export const pdfSlice = createSlice({
       })
       .addCase(uploadPdf.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.pdfs.push(action.payload);
+        state.pdfs.unshift(action.payload);
       })
       .addCase(uploadPdf.rejected, (state, action) => {
         state.isLoading = false;
@@ -78,6 +118,23 @@ export const pdfSlice = createSlice({
         state.pdfs = action.payload;
       })
       .addCase(getPdfs.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      .addCase(deletePdf.fulfilled, (state, action) => {
+        state.pdfs = state.pdfs.filter((pdf) => pdf._id !== action.payload);
+      })
+      .addCase(seedNCERT.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(seedNCERT.fulfilled, (state, action) => {
+        state.isLoading = false;
+        if (action.payload) {
+          state.pdfs = [...action.payload, ...state.pdfs];
+        }
+      })
+      .addCase(seedNCERT.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;

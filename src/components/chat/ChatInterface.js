@@ -8,7 +8,6 @@ import {
   setCurrentChat,
 } from "../../features/chat/chatSlice";
 import { FiSend, FiPlus, FiTrash2, FiMessageSquare } from "react-icons/fi";
-import Spinner from "../common/Spinner";
 
 function ChatInterface({ selectedPdfs }) {
   const dispatch = useDispatch();

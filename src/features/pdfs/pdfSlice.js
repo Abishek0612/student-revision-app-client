@@ -17,13 +17,16 @@ export const uploadPdf = createAsyncThunk(
   async (pdfData, thunkAPI) => {
     try {
       const token = thunkAPI.getState().auth.user.token;
+      const formData = new FormData();
+      formData.append("pdf", pdfData.file);
+
       const config = {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
         },
       };
-      const response = await axios.post(API_URL, pdfData, config);
+      const response = await axios.post(API_URL, formData, config);
       return response.data;
     } catch (error) {
       const message =
@@ -60,6 +63,26 @@ export const deletePdf = createAsyncThunk(
       const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.delete(API_URL + pdfId, config);
       return pdfId;
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+export const retryPdf = createAsyncThunk(
+  "pdfs/retry",
+  async (pdfId, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.user.token;
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.post(API_URL + `${pdfId}/retry`, {}, config);
+      return response.data;
     } catch (error) {
       const message =
         (error.response &&
@@ -126,6 +149,23 @@ export const pdfSlice = createSlice({
       })
       .addCase(deletePdf.fulfilled, (state, action) => {
         state.pdfs = state.pdfs.filter((pdf) => pdf._id !== action.payload);
+      })
+      .addCase(retryPdf.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(retryPdf.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const index = state.pdfs.findIndex(
+          (pdf) => pdf._id === action.payload._id
+        );
+        if (index !== -1) {
+          state.pdfs[index] = action.payload;
+        }
+      })
+      .addCase(retryPdf.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
       })
       .addCase(seedNCERT.pending, (state) => {
         state.isLoading = true;
